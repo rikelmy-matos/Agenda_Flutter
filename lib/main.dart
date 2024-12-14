@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         ),
         appBarTheme: const AppBarTheme(
           centerTitle: true,
-          elevation: 0,
+          elevation: 4,
           backgroundColor: Colors.deepPurple,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -56,19 +56,17 @@ class _MyHomePageState extends State<MyHomePage> {
     _searchController.addListener(_filterContacts);
   }
 
-  // Função para carregar todos os contatos do banco de dados
   Future<void> _loadContacts() async {
     List<Map<String, dynamic>> contactMaps = await _database.getUsers();
     setState(() {
       _contacts = contactMaps
           .map((map) => Contact.fromMap(map))
           .toList()
-        ..sort((a, b) => a.name.compareTo(b.name)); // Ordena os contatos por nome
-      _filteredContacts = List.from(_contacts); // Inicializa a lista filtrada
+        ..sort((a, b) => a.name.compareTo(b.name));
+      _filteredContacts = List.from(_contacts);
     });
   }
 
-  // Função de pesquisa para filtrar os contatos
   void _filterContacts() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -80,13 +78,11 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  // Função para adicionar um novo contato
   void _addContact(Contact contact) async {
     await _database.insertUser(contact.toMap());
-    _loadContacts(); // Recarregar a lista após adicionar
+    _loadContacts();
   }
 
-  // Função para editar um contato
   void _editContact(BuildContext context, Contact contact) async {
     final TextEditingController nameController = TextEditingController(text: contact.name);
     final TextEditingController phoneController = TextEditingController(text: contact.phone);
@@ -127,13 +123,13 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty) {
                   final updatedContact = Contact(
-                    id: contact.id, // Mantém o mesmo ID para atualizar
+                    id: contact.id,
                     name: nameController.text,
                     phone: phoneController.text,
-                    email: emailController.text, // Atualiza o email
+                    email: emailController.text,
                   );
-                  _database.updateUser(updatedContact); // Atualiza o contato no banco de dados
-                  _loadContacts(); // Recarregar a lista após editar
+                  _database.updateUser(updatedContact);
+                  _loadContacts();
                   Navigator.of(context).pop();
                 }
               },
@@ -145,10 +141,18 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Função para excluir um contato
   void _deleteContact(int id) async {
     await _database.deleteUser(id);
-    _loadContacts(); // Recarregar a lista após excluir
+    _loadContacts();
+  }
+
+  void _showContactProfile(BuildContext context, Contact contact) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContactProfileScreen(contact: contact, onEdit: _editContact, onDelete: _deleteContact),
+      ),
+    );
   }
 
   @override
@@ -198,6 +202,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         content: Text('${contact.name} foi excluído')));
                   },
                   child: ListTile(
+                    onTap: () => _showContactProfile(context, contact),
                     title: Text(contact.name),
                     subtitle: Text(contact.phone),
                     trailing: Row(
@@ -234,7 +239,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Função para exibir a caixa de diálogo de adicionar contato
   void _showAddContactDialog(BuildContext context) {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();
@@ -275,10 +279,10 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty) {
                   final newContact = Contact(
-                    id: 0, // O ID será gerado automaticamente pelo banco de dados
+                    id: 0,
                     name: nameController.text,
                     phone: phoneController.text,
-                    email: emailController.text, // Adiciona o campo email
+                    email: emailController.text,
                   );
                   _addContact(newContact);
                   Navigator.of(context).pop();
@@ -293,36 +297,116 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-// Classe Contact com método fromMap e toMap para mapear para o banco de dados
+// Tela de Perfil do Contato com opções de Editar e Excluir
+class ContactProfileScreen extends StatelessWidget {
+  final Contact contact;
+  final Function(BuildContext, Contact) onEdit;
+  final Function(int) onDelete;
+
+  const ContactProfileScreen({super.key, required this.contact, required this.onEdit, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(contact.name),
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  child: Text(
+                    contact.name[0],
+                    style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Nome: ${contact.name}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Telefone: ${contact.phone}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Email: ${contact.email.isNotEmpty ? contact.email : 'Não informado'}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => onEdit(context, contact),
+                      child: const Text('Editar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        onDelete(contact.id);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Excluir'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Modelo de contato e manipulação do banco de dados
 class Contact {
   final int id;
   final String name;
   final String phone;
-  final String email; // Campo de email opcional
+  final String email;
 
   Contact({required this.id, required this.name, required this.phone, required this.email});
 
-  // Método para criar um Contact a partir de um mapa (ex: do banco de dados)
   factory Contact.fromMap(Map<String, dynamic> map) {
     return Contact(
       id: map['id'],
       name: map['nome'],
       phone: map['telefone'],
-      email: map['email'] ?? '', // Se não houver email, retorna uma string vazia
+      email: map['email'] ?? '',
     );
   }
 
-  // Método para converter um Contact para um mapa (ex: para inserir no banco)
   Map<String, dynamic> toMap() {
     return {
-      'nome': name,  // O banco de dados não requer a inserção do 'id', pois é autoincrementado
+      'nome': name,
       'telefone': phone,
-      'email': email, // Adiciona o campo email
+      'email': email,
     };
   }
 }
 
-// Banco de dados para gerenciar os contatos
 class LocalDatabase {
   static Database? _database;
 
@@ -347,25 +431,21 @@ class LocalDatabase {
     )''');
   }
 
-  // Insert
   Future<int> insertUser(Map<String, dynamic> user) async {
     final db = await database;
     return await db.insert('user', user);
   }
 
-  // Read
   Future<List<Map<String, dynamic>>> getUsers() async {
     final db = await database;
     return await db.query('user');
   }
 
-  // Delete
   Future<int> deleteUser(int id) async {
     final db = await database;
     return await db.delete('user', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Update
   Future<int> updateUser(Contact contact) async {
     final db = await database;
     return await db.update(
